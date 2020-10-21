@@ -1,8 +1,8 @@
-use core::marker::PhantomData;
-use core::sync::atomic::{AtomicPtr, Ordering};
-use core::ptr;
-use crate::{Result, UsbDirection};
 use crate::bus::UsbBus;
+use crate::{Result, UsbDirection};
+use core::marker::PhantomData;
+use core::ptr;
+use core::sync::atomic::{AtomicPtr, Ordering};
 
 /// Trait for endpoint type markers.
 pub trait EndpointDirection {
@@ -46,15 +46,31 @@ pub enum EndpointType {
     Interrupt = 0b11,
 }
 
+/// USB endpoint Sync type. The values of this enum can be directly cast into `u8` to get the
+/// transfer bmAttributes transfer type bits.
+#[repr(u8)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum EndpointSyncType {
+    /// No Synchronization
+    NoSynchronization = 0b0000,
+    /// Asynchronous
+    Asynchronous = 0b0100,
+    /// Adaptive synchronization
+    Adaptive = 0b1000,
+    /// Synchronous to USB clock
+    Synchronous = 0b1100,
+}
+
 /// Handle for a USB endpoint. The endpoint direction is constrained by the `D` type argument, which
 /// must be either `In` or `Out`.
 pub struct Endpoint<'a, B: UsbBus, D: EndpointDirection> {
     bus_ptr: &'a AtomicPtr<B>,
     address: EndpointAddress,
     ep_type: EndpointType,
+    ep_sync_type: EndpointSyncType,
     max_packet_size: u16,
     interval: u8,
-    _marker: PhantomData<D>
+    _marker: PhantomData<D>,
 }
 
 impl<B: UsbBus, D: EndpointDirection> Endpoint<'_, B, D> {
@@ -62,16 +78,18 @@ impl<B: UsbBus, D: EndpointDirection> Endpoint<'_, B, D> {
         bus_ptr: &'a AtomicPtr<B>,
         address: EndpointAddress,
         ep_type: EndpointType,
+        ep_sync_type: EndpointSyncType,
         max_packet_size: u16,
-        interval: u8) -> Endpoint<'_, B, D>
-    {
+        interval: u8,
+    ) -> Endpoint<'_, B, D> {
         Endpoint {
             bus_ptr,
             address,
             ep_type,
+            ep_sync_type,
             max_packet_size,
             interval,
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 
@@ -85,16 +103,29 @@ impl<B: UsbBus, D: EndpointDirection> Endpoint<'_, B, D> {
     }
 
     /// Gets the endpoint address including direction bit.
-    pub fn address(&self) -> EndpointAddress { self.address }
+    pub fn address(&self) -> EndpointAddress {
+        self.address
+    }
 
     /// Gets the endpoint transfer type.
-    pub fn ep_type(&self) -> EndpointType { self.ep_type }
+    pub fn ep_type(&self) -> EndpointType {
+        self.ep_type
+    }
+
+    /// Gets the endpoint sync type.
+    pub fn ep_sync_type(&self) -> EndpointSyncType {
+        self.ep_sync_type
+    }
 
     /// Gets the maximum packet size for the endpoint.
-    pub fn max_packet_size(&self) -> u16 { self.max_packet_size }
+    pub fn max_packet_size(&self) -> u16 {
+        self.max_packet_size
+    }
 
     /// Gets the poll interval for interrupt endpoints.
-    pub fn interval(&self) -> u8 { self.interval }
+    pub fn interval(&self) -> u8 {
+        self.interval
+    }
 
     /// Sets the STALL condition for the endpoint.
     pub fn stall(&self) {
