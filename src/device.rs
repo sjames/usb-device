@@ -430,7 +430,7 @@ impl<B: UsbBus> UsbDevice<'_, B> {
                     }
                 }
 
-                (Recipient::Interface, Request::SET_INTERFACE, DEFAULT_ALTERNATE_SETTING_U16) => {
+                (Recipient::Interface, Request::SET_INTERFACE, _setting) => {
                     // TODO: do something when alternate settings are implemented
                     xfer.accept().ok();
                 }
